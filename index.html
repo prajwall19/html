@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Notes App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff7eb3, #65d2ff);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .hidden { display: none; }
+
+        input, textarea {
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            margin: 10px;
+            width: 300px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            background: #fff;
+            color: #333;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #222;
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        textarea { height: 120px; }
+
+        /* Butterfly animation */
+        .butterfly {
+            font-size: 60px;
+            animation: flyMain 3s infinite alternate ease-in-out;
+            margin-top: 20px;
+        }
+
+        @keyframes flyMain {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-25px); }
+        }
+
+        /* Nature Flying Butterflies Background */
+        .butterfly-bg {
+            position: absolute;
+            animation: fly 10s infinite linear;
+            font-size: 30px;
+        }
+
+        @keyframes fly {
+            0% { transform: translateY(100vh) translateX(-50vw); }
+            100% { transform: translateY(-120vh) translateX(50vw); }
+        }
+
+        #noteList div {
+            background: rgba(255,255,255,0.25);
+            padding: 15px;
+            margin: 12px auto;
+            width: 70%;
+            border-radius: 15px;
+            backdrop-filter: blur(12px);
+            color: #000;
+            font-weight: bold;
+        }
+
+        #storedImage {
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        /* popup edit box */
+        #editPopup {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.9);
+            padding: 25px;
+            border-radius: 15px;
+            width: 350px;
+            display: none;
+            color: black;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Animated background butterflies -->
+<div class="butterfly-bg" style="left:10%;">🦋</div>
+<div class="butterfly-bg" style="left:35%; animation-delay:2s;">🦋</div>
+<div class="butterfly-bg" style="left:60%; animation-delay:1s;">🦋</div>
+<div class="butterfly-bg" style="left:80%; animation-delay:3s;">🦋</div>
+
+<h1 style="font-size: 38px;">🦋 Notes & Memories Vault</h1>
+<div class="butterfly">🦋</div>
+
+<h2>Login</h2>
+<input type="email" id="emailInput" placeholder="Enter your email"><br>
+<input type="password" id="passwordInput" placeholder="Enter password"><br>
+<button onclick="login()">Submit</button>
+
+<div id="options" class="hidden">
+    <h2>Welcome!</h2>
+    <button onclick="showNoteSection()">Write a Note</button>
+    <button onclick="showPhotoSection()">Store a Photo</button>
+    <button onclick="loadStored()">Refresh</button>
+</div>
+
+<div id="noteSection" class="hidden">
+    <h3>Write or Edit Note</h3>
+    <textarea id="noteArea"></textarea><br>
+    <button onclick="saveNote()">Save Note</button>
+</div>
+
+<div id="photoSection" class="hidden">
+    <h3>Upload Photo</h3>
+    <input type="file" id="photoInput" accept="image/*"><br><br>
+    <button onclick="savePhoto()">Save Photo</button>
+</div>
+
+<div id="display" class="hidden">
+    <h3>Your Notes</h3>
+    <div id="noteList"></div>
+
+    <h3>Your Saved Photo</h3>
+    <img id="storedImage" width="250"/>
+</div>
+
+<!-- EDIT POPUP -->
+<div id="editPopup">
+    <h3>Edit Note</h3>
+    <textarea id="editText"></textarea><br>
+    <button onclick="saveEditedNote()">Save Changes</button>
+    <button onclick="closeEdit()">Cancel</button>
+</div>
+
+<script>
+let currentEmail = "";
+let currentPassword = "";
+let editIndex = -1;
+
+function login() {
+    currentEmail = document.getElementById("emailInput").value;
+    currentPassword = document.getElementById("passwordInput").value;
+
+    if (!currentEmail || !currentPassword) {
+        alert("Enter both email & password!");
+        return;
+    }
+
+    let savedPass = localStorage.getItem(currentEmail + "_password");
+    if (!savedPass) {
+        localStorage.setItem(currentEmail + "_password", currentPassword);
+        alert("Account Created!");
+    }
+    else if (savedPass !== currentPassword) {
+        alert("Wrong Password!");
+        return;
+    }
+
+    document.getElementById("options").classList.remove("hidden");
+    document.getElementById("display").classList.remove("hidden");
+    loadStored();
+}
+
+function showNoteSection() {
+    document.getElementById("noteSection").classList.remove("hidden");
+    document.getElementById("photoSection").classList.add("hidden");
+}
+
+function showPhotoSection() {
+    document.getElementById("photoSection").classList.remove("hidden");
+    document.getElementById("noteSection").classList.add("hidden");
+}
+
+function saveNote() {
+    let text = document.getElementById("noteArea").value.trim();
+    if (!text) return alert("Cannot save empty note!");
+
+    let notes = JSON.parse(localStorage.getItem(currentEmail + "_notes") || "[]");
+    notes.push(text);
+    localStorage.setItem(currentEmail + "_notes", JSON.stringify(notes));
+    document.getElementById("noteArea").value = "";
+    loadStored();
+}
+
+function deleteNote(i) {
+    let notes = JSON.parse(localStorage.getItem(currentEmail + "_notes"));
+    notes.splice(i, 1);
+    localStorage.setItem(currentEmail + "_notes", JSON.stringify(notes));
+    loadStored();
+}
+
+function editNote(i) {
+    editIndex = i;
+    let notes = JSON.parse(localStorage.getItem(currentEmail + "_notes"));
+    document.getElementById("editText").value = notes[i];
+    document.getElementById("editPopup").style.display = "block";
+}
+
+function closeEdit() {
+    document.getElementById("editPopup").style.display = "none";
+}
+
+function saveEditedNote() {
+    let notes = JSON.parse(localStorage.getItem(currentEmail + "_notes"));
+    notes[editIndex] = document.getElementById("editText").value;
+    localStorage.setItem(currentEmail + "_notes", JSON.stringify(notes));
+    document.getElementById("editPopup").style.display = "none";
+    loadStored();
+}
+
+function savePhoto() {
+    let file = document.getElementById("photoInput").files[0];
+    let reader = new FileReader();
+    reader.onload = () => {
+        localStorage.setItem(currentEmail + "_photo", reader.result);
+        loadStored();
+    };
+    reader.readAsDataURL(file);
+}
+
+function loadStored() {
+    let notes = JSON.parse(localStorage.getItem(currentEmail + "_notes") || "[]");
+    let img = localStorage.getItem(currentEmail + "_photo");
+    let list = document.getElementById("noteList");
+    list.innerHTML = "";
+
+    notes.forEach((n, i) => {
+        list.innerHTML +=
+        `<div>
+            <p>${n}</p>
+            <button onclick="editNote(${i})">Edit</button>
+            <button onclick="deleteNote(${i})">Delete</button>
+        </div>`;
+    });
+
+    document.getElementById("storedImage").src = img || "";
+}
+</script>
+
+</body>
+</html>
